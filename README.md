@@ -1,5 +1,5 @@
 
-Zonke Marketplace — WIL Software Development Project
+Zonke Marketplace - WIL Software Development Project
 # Zonke Marketplace
 
 ## About the Project
