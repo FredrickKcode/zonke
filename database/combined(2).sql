@@ -1,3 +1,5 @@
+USE zonke;
+
 DROP VIEW  IF EXISTS v_open_jobs;
 DROP VIEW  IF EXISTS v_freelancer_profiles;
 DROP VIEW  IF EXISTS v_proposals_detail;
