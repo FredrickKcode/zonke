@@ -1,0 +1,15 @@
+{
+  "name": "zonke-database",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node.js MySQL connection for Zonke",
+  "scripts": {
+    "check:db": "node check-connection.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^16.4.7",
+    "express": "^5.2.1",
+    "mysql2": "^3.14.0"
+  }
+}
