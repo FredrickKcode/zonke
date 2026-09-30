@@ -1,0 +1,16 @@
+name = "zonke/escrow"
+version = "0.1.0"
+compiler = "v1.1.23"
+plutus = "v3"
+license = "Apache-2.0"
+description = "Zonke.me freelance escrow validator (Cardano, Plutus V3)"
+
+[repository]
+user = "zonke"
+project = "escrow"
+platform = "github"
+
+[[dependencies]]
+name = "aiken-lang/stdlib"
+version = "v3.0.0"
+source = "github"
