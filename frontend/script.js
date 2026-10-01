@@ -104,6 +104,58 @@ const posts = [
              "Keep it simple, fast to load and easy to contact you from."] }
 ];
 
+let dbFreelancers = [];
+let dbPosts = [];
+let dbBounties = [];
+
+function normalizeFreelancer(f) {
+    const firstName = f.first_name || "";
+    const lastName = f.last_name || "";
+    const name = [firstName, lastName].filter(Boolean).join(" ") || f.name || "Freelancer";
+    const role = f.title || f.role || "Freelancer";
+    const skills = (f.skills || "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean)
+        .slice(0, 6);
+    return {
+        name,
+        role,
+        rating: f.avg_rating ? Number(f.avg_rating).toFixed(1) : "4.8",
+        rate: f.hourly_rate ? `R${Number(f.hourly_rate).toLocaleString("en-ZA")}/hour` : "Rate on request",
+        img: "",
+        bio: f.bio || `${role} ready to take on new projects.`,
+        skills: skills.length ? skills : ["Project delivery", "Collaboration"],
+        projects: `${f.projects_completed || 0}+ projects completed`,
+        location: f.location || "South Africa"
+    };
+}
+
+function normalizePost(post) {
+    return {
+        title: post.title || "Zonke update",
+        date: post.published_at ? new Date(post.published_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" }) : "Recently",
+        img: post.image_url || "images/developer.jpg",
+        pos: "center",
+        text: [
+          post.body ? post.body.replace(/<[^>]*>/g, "").slice(0, 180) + "..." : "Read the latest platform update.",
+          "Learn how to make the most of your profile and projects.",
+          "Stay connected with clients and communities on Zonke."
+        ]
+    };
+}
+
+function normalizeBounty(bounty) {
+    return {
+        tag: bounty.category_name || bounty.category || "General",
+        title: bounty.title,
+        description: bounty.description,
+        reward: `R${Number(bounty.reward || 0).toLocaleString("en-ZA")}`,
+        difficulty: bounty.difficulty ? bounty.difficulty.charAt(0).toUpperCase() + bounty.difficulty.slice(1) : "Medium",
+        submissions: `${bounty.submission_count || 0} Submissions`,
+        deadline: bounty.deadline ? new Date(`${bounty.deadline}T00:00:00`).toLocaleDateString("en-ZA", { day: "numeric", month: "short" }) : "Open" 
+    };
+}
 
 /* ================= SAVED STATE (connects the whole site) ================= */
 
@@ -221,8 +273,13 @@ document.getElementById("jobGrid").addEventListener("click", e => {
 
 const grid = document.getElementById("freelancerGrid");
 
+function freelancerPool() {
+    return [...dbFreelancers.map(normalizeFreelancer), ...freelancers];
+}
+
 function renderFreelancers() {
-    grid.innerHTML = freelancers.map((f, i) => `
+    const list = freelancerPool();
+    grid.innerHTML = list.map((f, i) => `
     <article class="profile-card" data-i="${i}">
         <div class="avatar">${initials(f.name)}</div>
         <h3>${f.name}</h3>
@@ -237,7 +294,9 @@ renderFreelancers();
 var fpager = smartList(grid, ".profile-card", 6, "Search freelancers by name, role or skill…");
 
 function openProfile(i) {
-    const f = freelancers[i];
+    const list = freelancerPool();
+    const f = list[i];
+    if (!f) return;
     openModal(`
         <div class="avatar">${initials(f.name)}</div>
         <h3>${f.name}</h3>
@@ -270,15 +329,30 @@ function openProfile(i) {
 
 grid.addEventListener("click", e => {
     const card = e.target.closest(".profile-card");
-    if (card) openProfile(card.dataset.i);
+    if (card) openProfile(Number(card.dataset.i));
 });
+
+async function loadDatabaseFreelancers() {
+    try {
+        const response = await fetch("http://localhost:3001/api/freelancers");
+        if (!response.ok) throw new Error("Freelancers API request failed");
+        const rows = await response.json();
+        dbFreelancers = Array.isArray(rows) ? rows : [];
+        renderFreelancers();
+        if (fpager) fpager.refresh(true);
+    } catch (error) {
+        console.warn("Database freelancers unavailable:", error.message);
+    }
+}
 
 
 /* ================= BLOG ================= */
 
 const blogGrid = document.getElementById("blogGrid");
 
-blogGrid.innerHTML = posts.map((p, i) => `
+function renderBlogPosts() {
+    const list = [...dbPosts.map(normalizePost), ...posts];
+    blogGrid.innerHTML = list.map((p, i) => `
     <article class="blog-card" data-i="${i}">
         <img src="${p.img}" alt="${p.title}" style="object-position:${p.pos}">
         <div class="blog-overlay">
@@ -286,16 +360,32 @@ blogGrid.innerHTML = posts.map((p, i) => `
             <span class="blog-date">${p.date}</span>
         </div>
     </article>`).join("");
+    smartList(blogGrid, ".blog-card", 6, "Search articles…");
+}
 
-smartList(blogGrid, ".blog-card", 6, "Search articles…");
+renderBlogPosts();
 
 blogGrid.addEventListener("click", e => {
     const card = e.target.closest(".blog-card");
     if (!card) return;
-    const p = posts[card.dataset.i];
+    const list = [...dbPosts.map(normalizePost), ...posts];
+    const p = list[Number(card.dataset.i)];
+    if (!p) return;
     openModal(`<img class="modal-img" src="${p.img}" alt="${p.title}">
         <h3>${p.title}</h3><p class="sub">${p.date}</p>${p.text.map(t => `<p>${t}</p>`).join("")}`);
 });
+
+async function loadDatabaseBlogPosts() {
+    try {
+        const response = await fetch("http://localhost:3001/api/blog");
+        if (!response.ok) throw new Error("Blog API request failed");
+        const rows = await response.json();
+        dbPosts = Array.isArray(rows) ? rows : [];
+        renderBlogPosts();
+    } catch (error) {
+        console.warn("Database blog posts unavailable:", error.message);
+    }
+}
 
 
 /* ================= DEPARTMENTS ================= */
@@ -310,15 +400,51 @@ document.querySelectorAll(".dept-card").forEach(card => {
 
 /* ================= BOUNTIES ================= */
 
-document.querySelectorAll(".bounty-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-        const card = btn.closest(".bounty-card");
-        const title = card.querySelector("h3").textContent;
-        formModal("Submit: " + title, card.querySelector(".bounty-details span").textContent,
-            field("Full Name", "text") + field("Email Address", "email") + field("Link to your solution", "url", "https://"),
-            "Submit Solution", "Solution submitted! ");
+function bindBountyButtons() {
+    document.querySelectorAll(".bounty-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const card = btn.closest(".bounty-card");
+            const title = card.querySelector("h3").textContent;
+            formModal("Submit: " + title, card.querySelector(".bounty-details span").textContent,
+                field("Full Name", "text") + field("Email Address", "email") + field("Link to your solution", "url", "https://"),
+                "Submit Solution", "Solution submitted! ");
+        });
     });
-});
+}
+
+bindBountyButtons();
+
+function renderBounties(list) {
+    const grid = document.querySelector(".bounty-grid");
+    if (!grid || !list.length) return;
+    grid.innerHTML = list.map((bounty) => `
+        <article class="bounty-card">
+            <span class="tag">${esc(bounty.tag || "General")}</span>
+            <h3>${esc(bounty.title)}</h3>
+            <p>${esc(bounty.description)}</p>
+            <div class="bounty-details">
+                <span>💰 Reward: ${esc(bounty.reward)}</span>
+                <span>⚡ Difficulty: ${esc(bounty.difficulty)}</span>
+                <span>👥 ${esc(bounty.submissions)}</span>
+                <span>📅 Deadline: ${esc(bounty.deadline)}</span>
+            </div>
+            <button class="btn primary bounty-btn">Submit Solution</button>
+        </article>
+    `).join("");
+    bindBountyButtons();
+}
+
+async function loadDatabaseBounties() {
+    try {
+        const response = await fetch("http://localhost:3001/api/bounties");
+        if (!response.ok) throw new Error("Bounties API request failed");
+        const rows = await response.json();
+        dbBounties = Array.isArray(rows) ? rows.map(normalizeBounty) : [];
+        renderBounties(dbBounties.length ? dbBounties : []);
+    } catch (error) {
+        console.warn("Database bounties unavailable:", error.message);
+    }
+}
 
 
 /* ================= POST JOB FORM (adds a live job card) ================= */
@@ -326,6 +452,7 @@ document.querySelectorAll(".bounty-btn").forEach(btn => {
 const postJobForm = document.getElementById("postJobForm");
 const jobMessage = document.getElementById("jobMessage");
 const jobGrid = document.getElementById("jobGrid");
+const jobLoadStatus = document.getElementById("jobLoadStatus");
 
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -342,18 +469,69 @@ function addJobCard(j) {
         </article>`);
 }
 
+jobGrid.innerHTML = "";
 savedJobs.forEach(addJobCard);
 
-const sampleJobs = [
- ["React Dashboard Build","development","Nova Analytics",8000],["Mobile App Bug Fixes","development","Kasi Apps",4500],["API Integration","development","PayLink",9500],
- ["Brand Logo Package","design","Bright Studio",3000],["Mobile UI Redesign","design","FitTrack",7000],["Social Media Graphics","design","Urban Eats",2500],
- ["Network Security Audit","cybersecurity","SafeNet SA",12000],["Phishing Awareness Training","cybersecurity","MedCare",6000],
- ["SEO Content Plan","marketing","GreenLeaf",3500],["Facebook Ads Campaign","marketing","Shop Local",4000],["Email Newsletter Setup","marketing","Bloom Co",2800],["WordPress Site Fix","development","Legal Hub",3200]
-];
-sampleJobs.forEach(j => addJobCard({ title: j[0], category: j[1], company: j[2], budget: j[3], deadline: "Open", desc: "Looking for a reliable freelancer to complete this project." }));
 var jobPager = makePager({ grid: jobGrid, sel: ".job-card", per: 6, bar: (jobGrid.insertAdjacentHTML("afterend", '<div class="pagination"></div>'), jobGrid.nextElementSibling),
     test: card => card.textContent.toLowerCase().includes(searchInput.value.toLowerCase()) &&
         (categorySelect.value === "all" || card.dataset.category === categorySelect.value) });
+
+function addDatabaseJobCard(job) {
+    const rawCategory = String(job.category || "other").toLowerCase();
+    const categoryAliases = {
+        "web-development": "development",
+        "software-development": "development",
+        "cyber-security": "cybersecurity",
+        "digital-marketing": "marketing",
+        "graphic-design": "design",
+        "ui-ux-design": "design"
+    };
+    const category = categoryAliases[rawCategory] || rawCategory;
+    const categoryLabel = rawCategory.replace(/[-_]+/g, " ").replace(/\\b\\w/g, letter => letter.toUpperCase());
+    const budgetMin = Number(job.budget_min);
+    const budgetMax = Number(job.budget_max);
+    const budget = job.budget_min != null && job.budget_max != null
+        ? `R${budgetMin.toLocaleString("en-ZA")} - R${budgetMax.toLocaleString("en-ZA")}`
+        : job.budget_max != null
+            ? `Up to R${budgetMax.toLocaleString("en-ZA")}`
+            : job.budget_min != null
+                ? `From R${budgetMin.toLocaleString("en-ZA")}`
+                : "Budget not specified";
+    const deadline = job.deadline
+        ? new Date(`${String(job.deadline).slice(0, 10)}T00:00:00`).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })
+        : "No deadline";
+
+    jobGrid.insertAdjacentHTML("beforeend", `
+        <article class="job-card" data-category="${esc(category)}">
+            <div class="job-top"><span class="tag">${esc(categoryLabel)}</span><span class="status">Open</span></div>
+            <h3>${esc(job.title)}</h3>
+            <p class="company">${esc(job.poster_name || "Zonke Client")}</p>
+            <p>${esc(job.description || "")}</p>
+            <div class="job-info"><span>📍 ${esc(job.location || "Remote")}</span><span>💰 ${esc(budget)}</span><span>📅 ${esc(deadline)}</span></div>
+            <p class="skills">${esc(job.required_skills || "No specific skills listed")}</p>
+            <button class="btn primary apply-btn">Apply Now</button>
+        </article>`);
+}
+
+async function loadDatabaseJobs() {
+    try {
+        const response = await fetch("http://localhost:3001/api/jobs");
+        if (!response.ok) throw new Error("Jobs API request failed");
+        const jobs = await response.json();
+        jobs.forEach(addDatabaseJobCard);
+        jobLoadStatus.textContent = jobs.length || savedJobs.length
+            ? ""
+            : "No open jobs were returned by the database.";
+    } catch (error) {
+        jobLoadStatus.textContent = "Database jobs are unavailable. Start the API to load jobs from the database.";
+    }
+    jobPager.refresh(true);
+}
+
+loadDatabaseJobs();
+loadDatabaseFreelancers();
+loadDatabaseBlogPosts();
+loadDatabaseBounties();
 
 postJobForm.addEventListener("submit", function (event) {
     event.preventDefault();

@@ -4,7 +4,10 @@
   "private": true,
   "description": "Node.js MySQL connection for Zonke",
   "scripts": {
-    "check:db": "node check-connection.js"
+    "check:db": "node check-connection.js",
+    "db:init": "node init-zonke-db.js",
+    "dev": "node api-server.js",
+    "start": "node api-server.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
