@@ -12,11 +12,11 @@ const SKILL = { development: ["JavaScript", "Python", "React", "SQL"], design: [
 const NAMES = ["Thabo Mokoena", "Naledi Dlamini", "Ayesha Patel", "Sipho Nkosi", "Lerato Khumalo", "Pieter van Wyk", "Zanele Mthembu", "Kabelo Sithole",
     "Fatima Hassan", "Johan Botha", "Nomsa Zulu", "Tumelo Ndlovu", "Anele Cele", "Riaan Steyn"];
 const keys = Object.keys(CATS);
-const talent = NAMES.map((n, i) => { const c = keys[i % 4];
+let talent = NAMES.map((n, i) => { const c = keys[i % 4];
     return { name: n, cat: c, role: ROLE[c][i % 3], rating: (4.4 + (i % 6) / 10).toFixed(1), rate: "R" + (200 + i * 15) + "/hour", skills: SKILL[c], projects: (12 + i * 3) + "+ projects", location: ["Johannesburg", "Cape Town", "Durban", "Pretoria", "Remote"][i % 5], bio: ROLE[c][i % 3] + " open to new work." }; });
 ls.get("freelancers", []).forEach(f => talent.push({ ...f, cat: f.cat || "development" }));
 
-const jobs = [["React Dashboard Build", "development", "Nova Analytics", 8000], ["Mobile App Bug Fixes", "development", "Kasi Apps", 4500], ["API Integration", "development", "PayLink", 9500],
+let jobs = [["React Dashboard Build", "development", "Nova Analytics", 8000], ["Mobile App Bug Fixes", "development", "Kasi Apps", 4500], ["API Integration", "development", "PayLink", 9500],
     ["Brand Logo Package", "design", "Bright Studio", 3000], ["Mobile UI Redesign", "design", "FitTrack", 7000], ["Social Media Graphics", "design", "Urban Eats", 2500],
     ["Network Security Audit", "cybersecurity", "SafeNet SA", 12000], ["Phishing Awareness Training", "cybersecurity", "MedCare", 6000],
     ["SEO Content Plan", "marketing", "GreenLeaf", 3500], ["Facebook Ads Campaign", "marketing", "Shop Local", 4000], ["Email Newsletter Setup", "marketing", "Bloom Co", 2800], ["WordPress Site Fix", "development", "Legal Hub", 3200]
@@ -31,12 +31,66 @@ document.getElementById("mClose").onclick = closeModal;
 modal.onclick = e => { if (e.target === modal) closeModal(); };
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
 const fld = (l, t = "text") => `<div class="form-group"><label>${l}</label><input type="${t}" required></div>`;
+async function apiRequest(path, method = "GET", payload = null, authenticated = true) {
+    const headers = {};
+    const token = sessionStorage.getItem("zonke_token");
+    if (authenticated && !token) throw new Error("Please log in before using this feature.");
+    if (token && authenticated) headers.Authorization = `Bearer ${token}`;
+    if (payload) headers["Content-Type"] = "application/json";
+    const response = await fetch(`http://localhost:3001/api${path}`, {
+        method,
+        headers,
+        ...(payload ? { body: JSON.stringify(payload) } : {})
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Request failed");
+    return result;
+}
+
+async function loadDatabaseTalent() {
+    const rows = await apiRequest("/freelancers", "GET", null, false);
+    return rows.map(row => ({
+        freelancer_id: row.freelancer_id,
+        user_id: row.user_id,
+        name: `${row.first_name} ${row.last_name}`.trim(),
+        cat: row.category || "development",
+        role: row.title || "Freelancer",
+        rating: row.avg_rating ? Number(row.avg_rating).toFixed(1) : "New",
+        rate: row.hourly_rate ? `R${Number(row.hourly_rate).toLocaleString("en-ZA")}/hour` : "Rate on request",
+        skills: String(row.skills || "").split(",").map(skill => skill.trim()).filter(Boolean),
+        projects: `${row.projects_completed || 0}+ projects`,
+        location: row.location || "South Africa",
+        bio: row.bio || "Available for new projects."
+    }));
+}
+
+function replaceTalentGrid(gridId, pager, cardFactory) {
+    const target = document.getElementById(gridId);
+    target.innerHTML = talent.map(cardFactory).join("");
+    pager.refresh(true);
+}
+
 function formModal(title, sub, fields, btn, done, onSubmit) {
     mBody.innerHTML = `<h3>${title}</h3><p class="sub">${sub}</p><form id="mForm">${fields}<button class="btn primary" type="submit">${btn}</button><p class="form-message" id="mMsg"></p></form>`;
     modal.classList.add("open");
-    document.getElementById("mForm").onsubmit = e => { e.preventDefault(); if (onSubmit) onSubmit();
-        const m = document.getElementById("mMsg"); m.textContent = done; m.style.color = "#15803d";
-        e.target.querySelectorAll("input,textarea,button").forEach(x => x.disabled = true); setTimeout(closeModal, 1800); };
+    document.getElementById("mForm").onsubmit = async e => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const message = document.getElementById("mMsg");
+        const submit = form.querySelector('[type="submit"]');
+        submit.disabled = true;
+        try {
+            if (onSubmit) await onSubmit(form);
+            message.textContent = done;
+            message.style.color = "#15803d";
+            form.querySelectorAll("input,textarea,button").forEach(x => x.disabled = true);
+            setTimeout(closeModal, 1800);
+        } catch (error) {
+            message.textContent = error.message;
+            message.style.color = "#dc2626";
+            submit.disabled = false;
+        }
+    };
 }
 
 /* ---------- building blocks ---------- */
@@ -59,9 +113,29 @@ const jobCard = (j, i) => `<article class="job-card" data-category="${j.category
 
 function postHandler(id, who) {
     const f = document.getElementById(id); if (!f) return;
-    f.onsubmit = e => { e.preventDefault(); const x = f.elements;
-        const saved = ls.get("jobs", []); saved.push({ title: x[0].value, category: x[1].value, budget: x[2].value, deadline: x[3].value, desc: x[4].value, company: who });
-        ls.set("jobs", saved); f.reset(); const m = f.querySelector(".form-message"); m.textContent = "Posted. It is now live on the main site under Find Work."; m.style.color = "#15803d"; };
+    f.onsubmit = async e => {
+        e.preventDefault();
+        const x = f.elements;
+        const message = f.querySelector(".form-message");
+        try {
+            const amount = Number(x[2].value);
+            await apiRequest("/jobs", "POST", {
+                title: x[0].value.trim(),
+                category: x[1].value,
+                budget_min: amount,
+                budget_max: amount,
+                deadline: x[3].value,
+                description: x[4].value.trim(),
+                location: "Remote"
+            });
+            f.reset();
+            message.textContent = "Job saved to the database and is live on Find Work.";
+            message.style.color = "#15803d";
+        } catch (error) {
+            message.textContent = error.message;
+            message.style.color = "#dc2626";
+        }
+    };
 }
 function viewTalent(t) {
     mBody.innerHTML = `<div class="avatar">${ini(t.name)}</div><h3>${esc(t.name)}</h3><p class="sub">${esc(t.role)} &middot; ${esc(t.location)}</p><p class="rating">★ ${t.rating} | ${esc(t.projects)}</p>
@@ -86,8 +160,17 @@ if (role === "client") {
         sec("post", "Post a Project", "Tell professionals what you need.", jobForm("clientForm", "Post Project"), "purple-section") +
         sec("talent", "Find Talent", "Search and filter our professionals.", '<div class="job-grid" id="talentGrid"></div>');
     postHandler("clientForm", "Zonke Client");
-    grid("talentGrid", talent, (t, i) => talentCard(t, i, "Hire"), 6, "Search by name, role or skill…", true, t =>
-        formModal("Hire " + esc(t.name), esc(t.role) + " · " + esc(t.rate), fld("Your Name") + fld("Email", "email") + '<div class="form-group"><label>Project details</label><textarea rows="4" required></textarea></div>', "Send Hire Request", "Request sent to " + t.name + "!"));
+    const talentCardForClient = (t, i) => talentCard(t, i, "Hire");
+    const talentPager = grid("talentGrid", talent, talentCardForClient, 6, "Search by name, role or skill…", true, t =>
+        formModal("Hire " + esc(t.name), esc(t.role) + " · " + esc(t.rate), '<div class="form-group"><label>Project details</label><textarea rows="4" required></textarea></div>', "Send Hire Request", "Hire request saved for " + t.name + "!", async form => {
+            if (!t.freelancer_id) throw new Error("This sample profile is not stored in the database yet.");
+            await apiRequest("/hire-requests", "POST", { freelancer_id: t.freelancer_id, project_details: form.elements[0].value });
+        }));
+    loadDatabaseTalent().then(rows => {
+        if (!rows.length) return;
+        talent.splice(0, talent.length, ...rows);
+        replaceTalentGrid("talentGrid", talentPager, talentCardForClient);
+    }).catch(error => console.warn("Database freelancers unavailable:", error.message));
 }
 
 if (role === "recruiter") {
@@ -101,13 +184,19 @@ if (role === "recruiter") {
     const box = document.getElementById("shortBox");
     const drawShort = () => box.innerHTML = short.length ? short.map(n => `<div class="history-item"><span>${esc(n)}</span><span class="pending">Shortlisted</span></div>`).join("") : "<p>No candidates shortlisted yet.</p>";
     drawShort();
-    const p = grid("candGrid", talent, (t, i) => talentCard(t, i, short.includes(t.name) ? "★ Shortlisted" : "Shortlist"), 6, "Search candidates by name, role or skill…", true, (t, b) => {
+    const recruiterTalentCard = (t, i) => talentCard(t, i, short.includes(t.name) ? "★ Shortlisted" : "Shortlist");
+    const p = grid("candGrid", talent, recruiterTalentCard, 6, "Search candidates by name, role or skill…", true, (t, b) => {
         short = short.includes(t.name) ? short.filter(n => n !== t.name) : short.concat(t.name); ls.set("short", short);
         b.textContent = short.includes(t.name) ? "★ Shortlisted" : "Shortlist"; drawShort(); });
+    loadDatabaseTalent().then(rows => {
+        if (!rows.length) return;
+        talent.splice(0, talent.length, ...rows);
+        replaceTalentGrid("candGrid", p, recruiterTalentCard);
+    }).catch(error => console.warn("Database freelancers unavailable:", error.message));
 }
 
 if (role === "professional") {
-    let apps = ls.get("apps", []);
+    let apps = [];
     app.innerHTML = hero("Find Work That Fits Your Skills", "Build your profile, browse open projects and apply in seconds.", "Browse Jobs", "#board") +
         steps([["Create your profile", "Show your skills and hourly rate."], ["Apply to projects", "Search jobs by department and budget."], ["Get hired and paid", "Deliver great work and build your reputation."]]) +
         sec("profile", "Create Your Professional Profile", "Clients and recruiters will find you in search.",
@@ -115,14 +204,57 @@ if (role === "professional") {
              <div class="form-group"><label>Department</label><select>${catOpts}</select></div><button class="btn primary" type="submit">Publish Profile</button><p class="form-message"></p></form>`, "purple-section") +
         sec("board", "Job Board", "Search open projects.", '<div class="job-grid" id="jobGridP"></div>') +
         sec("apps", "My Applications", "Projects you have applied for.", '<div class="payment-history mini-list" id="appBox"></div>', "purple-section");
-    document.getElementById("proForm").onsubmit = e => { e.preventDefault(); const x = e.target.elements;
-        const list = ls.get("freelancers", []); list.push({ name: x[0].value, role: x[1].value, rating: "New", rate: "R" + x[2].value + "/hour", img: "", bio: "New member of Zonke.me.",
-            skills: x[3].value.split(",").map(s => s.trim()).filter(Boolean), projects: "Just joined", location: "South Africa", cat: x[4].value });
-        ls.set("freelancers", list); e.target.reset(); const m = e.target.querySelector(".form-message"); m.textContent = "Profile published. Clients and recruiters can now find you."; m.style.color = "#15803d"; };
+    document.getElementById("proForm").onsubmit = async e => {
+        e.preventDefault();
+        const x = e.target.elements;
+        const message = e.target.querySelector(".form-message");
+        try {
+            await apiRequest("/freelancer/profile", "PUT", {
+                title: x[1].value,
+                hourly_rate: Number(x[2].value),
+                skills: x[3].value,
+                category: x[4].value
+            });
+            message.textContent = "Your profile was saved to the database.";
+            message.style.color = "#15803d";
+        } catch (error) {
+            message.textContent = error.message;
+            message.style.color = "#dc2626";
+        }
+    };
     const box = document.getElementById("appBox");
     const drawApps = () => box.innerHTML = apps.length ? apps.map(a => `<div class="history-item"><span>${esc(a)}</span><span class="paid">Applied</span></div>`).join("") : "<p>You have not applied to any projects yet.</p>";
     drawApps();
-    grid("jobGridP", jobs, jobCard, 6, "Search jobs by title, company or skill…", true, j =>
-        formModal("Apply: " + esc(j.title), esc(j.company), fld("Full Name") + fld("Email", "email") + '<div class="form-group"><label>Why are you a good fit?</label><textarea rows="4" required></textarea></div>', "Submit Application", "Application sent!",
-            () => { apps.push(j.title + " — " + j.company); ls.set("apps", apps); drawApps(); }));
+    const renderJobCard = (j, i) => `<article class="job-card" data-job-id="${Number(j.job_id) || ""}" data-category="${j.category}" data-i="${i}"><div class="job-top"><span class="tag">${CATS[j.category] || j.category}</span><span class="status">Open</span></div>
+        <h3>${esc(j.title)}</h3><p class="company">${esc(j.company)}</p><p>${esc(j.desc)}</p><div class="job-info"><span>💰 R${Number(j.budget).toLocaleString("en-ZA")}</span><span>📅 ${esc(j.deadline)}</span></div>
+        <button class="btn primary" data-act="main">Apply Now</button></article>`;
+    const jobsPager = grid("jobGridP", jobs, renderJobCard, 6, "Search jobs by title, company or skill…", true, j =>
+        formModal("Apply: " + esc(j.title), esc(j.company), '<div class="form-group"><label>Proposed amount (R)</label><input type="number" min="1" required></div><div class="form-group"><label>Why are you a good fit?</label><textarea rows="4" required></textarea></div>', "Submit Application", "Application saved!", async form => {
+            if (!j.job_id) throw new Error("This sample job is not stored in the database yet.");
+            await apiRequest("/proposals", "POST", {
+                job_id: j.job_id,
+                proposed_amount: Number(form.elements[0].value),
+                cover_letter: form.elements[1].value
+            });
+        }));
+    apiRequest("/jobs", "GET", null, false).then(rows => {
+        if (!rows.length) return;
+        jobs.splice(0, jobs.length, ...rows.map(row => ({
+            job_id: row.job_id,
+            title: row.title,
+            category: row.category || "development",
+            company: row.poster_name || "Zonke Client",
+            budget: row.budget_max || row.budget_min || 0,
+            deadline: row.deadline || "Open",
+            desc: row.description || ""
+        })));
+        document.getElementById("jobGridP").innerHTML = jobs.map(renderJobCard).join("");
+        jobsPager.refresh(true);
+    }).catch(error => console.warn("Database jobs unavailable:", error.message));
+    apiRequest("/proposals/mine").then(rows => {
+        apps.splice(0, apps.length, ...rows.map(proposal => `${proposal.job_title} - ${proposal.status}`));
+        drawApps();
+    }).catch(error => {
+        if (sessionStorage.getItem("zonke_token")) console.warn("Applications unavailable:", error.message);
+    });
 }

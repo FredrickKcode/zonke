@@ -119,6 +119,8 @@ function normalizeFreelancer(f) {
         .filter(Boolean)
         .slice(0, 6);
     return {
+        freelancer_id: f.freelancer_id,
+        user_id: f.user_id,
         name,
         role,
         rating: f.avg_rating ? Number(f.avg_rating).toFixed(1) : "4.8",
@@ -147,6 +149,7 @@ function normalizePost(post) {
 
 function normalizeBounty(bounty) {
     return {
+        bounty_id: bounty.bounty_id,
         tag: bounty.category_name || bounty.category || "General",
         title: bounty.title,
         description: bounty.description,
@@ -164,7 +167,8 @@ const store = {
     set(k, v) { try { localStorage.setItem("zonke_" + k, JSON.stringify(v)); } catch (e) {} }
 };
 
-let user = store.get("user", null);
+let user = sessionStorage.getItem("zonke_token") ? store.get("user", null) : null;
+if (!user) store.set("user", null);
 const savedJobs = store.get("jobs", []);
 store.get("freelancers", []).forEach(f => freelancers.push(f));
 
@@ -191,18 +195,27 @@ document.getElementById("modalClose").addEventListener("click", closeModal);
 modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
 
-function formModal(title, sub, fields, buttonText, doneText) {
+function formModal(title, sub, fields, buttonText, doneText, onSubmit) {
     openModal(`<h3>${title}</h3><p class="sub">${sub}</p>
         <form id="modalForm">${fields}
         <button class="btn primary" type="submit">${buttonText}</button>
         <p class="form-message" id="modalMsg"></p></form>`);
-    document.getElementById("modalForm").addEventListener("submit", e => {
+    document.getElementById("modalForm").addEventListener("submit", async e => {
         e.preventDefault();
         const msg = document.getElementById("modalMsg");
-        msg.textContent = doneText;
-        msg.style.color = "#15803d";
-        e.target.querySelectorAll("input,textarea,select,button").forEach(el => el.disabled = true);
-        setTimeout(closeModal, 2200);
+        const submit = e.target.querySelector('[type="submit"]');
+        submit.disabled = true;
+        try {
+            if (onSubmit) await onSubmit(e.target);
+            msg.textContent = doneText;
+            msg.style.color = "#15803d";
+            e.target.querySelectorAll("input,textarea,select,button").forEach(el => el.disabled = true);
+            setTimeout(closeModal, 2200);
+        } catch (error) {
+            msg.textContent = error.message || "Could not submit this form.";
+            msg.style.color = "#dc2626";
+            submit.disabled = false;
+        }
     });
 }
 
@@ -216,18 +229,70 @@ const field = (label, type, ph = "") => {
 
 /* ================= SIGN UP ================= */
 
-function openSignup() {
-    formModal("Sign Up", "Join Zonke.me in a minute.",
-        field("Full Name", "text") + field("Email Address", "email") + field("Password", "password") +
-        `<div class="form-group"><label>I want to</label><select required>
-            <option value="">Select account type</option>
-            <option>Find work (Freelancer)</option>
-            <option>Hire talent (Buyer)</option></select></div>`,
-        "Create Account", "Welcome to Zonke.me! Your account has been created.");
-    document.getElementById("modalForm").addEventListener("submit", () => {
-        const f = document.getElementById("modalForm").querySelectorAll("input, select");
-        signIn(f[0].value, f[1].value, f[3].value.includes("Freelancer") ? "Freelancer" : "Buyer");
+async function apiRequest(path, payload, authenticated = true) {
+    const headers = { "Content-Type": "application/json" };
+    const token = sessionStorage.getItem("zonke_token");
+    if (authenticated && token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetch(`http://localhost:3001/api${path}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload)
     });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Request failed");
+    return result;
+}
+
+function saveAuthSession(result) {
+    sessionStorage.setItem("zonke_token", result.token);
+    user = {
+        name: `${result.user.firstName} ${result.user.lastName}`.trim(),
+        email: result.user.email,
+        type: result.user.role
+    };
+    store.set("user", user);
+    updateAuth();
+    loadPaymentProjects();
+}
+
+function openAuth(mode = "register") {
+    const registering = mode === "register";
+    openModal(`<h3>${registering ? "Create your account" : "Log in"}</h3>
+        <p class="sub">${registering ? "Join Zonke.me." : "Welcome back to Zonke.me."}</p>
+        <form id="authForm">
+            ${registering ? '<div class="form-group"><label>Full Name</label><input name="full_name" required></div>' : ""}
+            <div class="form-group"><label>Email Address</label><input name="email" type="email" required></div>
+            <div class="form-group"><label>Password</label><input name="password" type="password" minlength="10" required></div>
+            ${registering ? '<div class="form-group"><label>Account Type</label><select name="role" required><option value="">Select account type</option><option value="freelancer">Freelancer</option><option value="client">Client</option><option value="recruiter">Recruiter</option></select></div>' : ""}
+            <button class="btn primary" type="submit">${registering ? "Create Account" : "Log In"}</button>
+            <p class="form-message" id="authMessage"></p>
+            <button class="btn secondary" id="authSwitch" type="button">${registering ? "Already have an account? Log in" : "Create an account"}</button>
+        </form>`);
+    document.getElementById("authSwitch").onclick = () => openAuth(registering ? "login" : "register");
+    document.getElementById("authForm").addEventListener("submit", async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = Object.fromEntries(new FormData(form));
+        const message = document.getElementById("authMessage");
+        const button = form.querySelector('[type="submit"]');
+        button.disabled = true;
+        try {
+            const result = await apiRequest(registering ? "/register" : "/login", data, false);
+            saveAuthSession(result);
+            message.textContent = registering ? "Account created and signed in." : "You are now signed in.";
+            message.style.color = "#15803d";
+            form.querySelectorAll("input,select,button").forEach(element => element.disabled = true);
+            setTimeout(closeModal, 1200);
+        } catch (error) {
+            message.textContent = error.message;
+            message.style.color = "#dc2626";
+            button.disabled = false;
+        }
+    });
+}
+
+function openSignup() {
+    openAuth("register");
 }
 
 const navSignup = document.getElementById("navSignup");
@@ -240,18 +305,17 @@ function openAccount() {
     openModal(`<h3>${user.name}</h3><p class="sub">${user.type} &middot; ${user.email}</p>
         <p>You are signed in. Your details are pre-filled on applications, hire requests and messages.</p>
         <div class="modal-actions"><button class="btn secondary" id="logoutBtn">Log Out</button></div>`);
-    document.getElementById("logoutBtn").onclick = () => { user = null; store.set("user", null); updateAuth(); closeModal(); };
+    document.getElementById("logoutBtn").onclick = () => {
+        user = null;
+        sessionStorage.removeItem("zonke_token");
+        store.set("user", null);
+        updateAuth();
+        closeModal();
+    };
 }
 
 navSignup.addEventListener("click", () => { nav.classList.remove("active"); user ? openAccount() : openSignup(); });
 updateAuth();
-
-function signIn(name, email, type) {
-    user = { name, email, type };
-    store.set("user", user);
-    updateAuth();
-}
-
 
 /* ================= APPLY ================= */
 
@@ -262,10 +326,18 @@ document.getElementById("jobGrid").addEventListener("click", e => {
     const title = card.querySelector("h3").textContent;
     const company = card.querySelector(".company").textContent;
     const info = card.querySelector(".job-info").innerText.replace(/\n/g, "  ");
+    const jobId = card.dataset.jobId;
     formModal("Apply: " + title, company + " &middot; " + info,
-        field("Full Name", "text") + field("Email Address", "email") +
-        `<div class="form-group"><label>Why are you a good fit?</label><textarea rows="4" required></textarea></div>`,
-        "Submit Application", "Application sent for " + title + "!");
+        `<div class="form-group"><label>Proposed amount (R)</label><input name="proposed_amount" type="number" min="1" required></div>
+         <div class="form-group"><label>Why are you a good fit?</label><textarea name="cover_letter" rows="4" required></textarea></div>`,
+        "Submit Application", "Application saved for " + title + "!", async form => {
+            if (!jobId) throw new Error("This sample listing is not stored in the database, so it cannot accept applications yet.");
+            await apiRequest("/proposals", {
+                job_id: Number(jobId),
+                proposed_amount: Number(form.elements.proposed_amount.value),
+                cover_letter: form.elements.cover_letter.value
+            });
+        });
 });
 
 
@@ -310,21 +382,20 @@ function openProfile(i) {
             <button class="btn secondary" id="msgFl">Send Message</button>
         </div>`);
     document.getElementById("hireNow").onclick = () => formModal("Hire " + f.name, f.role + " &middot; " + f.rate,
-        field("Your Name", "text") + field("Email Address", "email") +
-        `<div class="form-group"><label>Project details</label><textarea rows="4" required></textarea></div>`,
-        "Send Hire Request", "Request sent to " + f.name + "!");
-        document.getElementById("modalForm").insertAdjacentHTML("beforeend",
-            `<button class="btn secondary" type="button" id="toPay" style="margin-top:12px">Continue to Payment</button>`);
-        document.getElementById("toPay").onclick = () => {
-            closeModal();
-            document.getElementById("paymentMessage").textContent = "Paying for: " + f.name + " (" + f.rate + ")";
-            document.getElementById("paymentMessage").style.color = "#2563eb";
-            document.getElementById("payments").scrollIntoView();
-        };
+        `<div class="form-group"><label>Project details</label><textarea name="project_details" rows="4" required></textarea></div>`,
+        "Send Hire Request", "Hire request saved for " + f.name + "!", async form => {
+            if (!f.freelancer_id) throw new Error("This sample profile is not stored in the database, so it cannot receive a request yet.");
+            await apiRequest("/hire-requests", {
+                freelancer_id: Number(f.freelancer_id),
+                project_details: form.elements.project_details.value
+            });
+        });
     document.getElementById("msgFl").onclick = () => formModal("Message " + f.name, f.role,
-        field("Your Name", "text") + field("Email Address", "email") +
-        `<div class="form-group"><label>Message</label><textarea rows="4" required></textarea></div>`,
-        "Send Message", "Message sent! ");
+        `<div class="form-group"><label>Message</label><textarea name="body" rows="4" required></textarea></div>`,
+        "Send Message", "Message saved!", async form => {
+            if (!f.user_id) throw new Error("This sample profile is not stored in the database, so it cannot receive a message yet.");
+            await apiRequest("/messages", { recipient_id: Number(f.user_id), body: form.elements.body.value });
+        });
 }
 
 grid.addEventListener("click", e => {
@@ -406,8 +477,14 @@ function bindBountyButtons() {
             const card = btn.closest(".bounty-card");
             const title = card.querySelector("h3").textContent;
             formModal("Submit: " + title, card.querySelector(".bounty-details span").textContent,
-                field("Full Name", "text") + field("Email Address", "email") + field("Link to your solution", "url", "https://"),
-                "Submit Solution", "Solution submitted! ");
+                '<div class="form-group"><label>Link to your solution</label><input name="solution_url" type="url" placeholder="https://" required></div>',
+                "Submit Solution", "Solution saved to the database.", async form => {
+                    if (!card.dataset.bountyId) throw new Error("This sample bounty is not stored in the database yet.");
+                    await apiRequest("/bounty-submissions", {
+                        bounty_id: Number(card.dataset.bountyId),
+                        solution_url: form.elements.solution_url.value
+                    });
+                });
         });
     });
 }
@@ -418,7 +495,7 @@ function renderBounties(list) {
     const grid = document.querySelector(".bounty-grid");
     if (!grid || !list.length) return;
     grid.innerHTML = list.map((bounty) => `
-        <article class="bounty-card">
+        <article class="bounty-card" data-bounty-id="${Number(bounty.bounty_id) || ""}">
             <span class="tag">${esc(bounty.tag || "General")}</span>
             <h3>${esc(bounty.title)}</h3>
             <p>${esc(bounty.description)}</p>
@@ -502,7 +579,7 @@ function addDatabaseJobCard(job) {
         : "No deadline";
 
     jobGrid.insertAdjacentHTML("beforeend", `
-        <article class="job-card database-job-card" data-category="${esc(category)}">
+        <article class="job-card database-job-card" data-job-id="${Number(job.job_id)}" data-category="${esc(category)}">
             <div class="job-top"><span class="tag">${esc(categoryLabel)}</span><span class="status">Open</span></div>
             <h3>${esc(job.title)}</h3>
             <p class="company">${esc(job.poster_name || "Zonke Client")}</p>
@@ -589,21 +666,28 @@ postJobForm.addEventListener("submit", async function (event) {
 const signupForm = document.getElementById("signupForm");
 const signupMessage = document.getElementById("signupMessage");
 
-signupForm.addEventListener("submit", function (event) {
+    signupForm.addEventListener("submit", async function (event) {
     event.preventDefault();
     const f = signupForm.elements;
-    const p = { name: f[0].value, role: "Freelancer", rating: "New", rate: f[3].value ? "R" + f[3].value + "/hour" : "Rate on request",
-                img: "", bio: "New member of Zonke.me.", skills: f[4].value.split(",").map(x => x.trim()).filter(Boolean),
-                projects: "Just joined", location: "South Africa" };
-    freelancers.push(p);
-    store.set("freelancers", store.get("freelancers", []).concat(p));
-    signIn(f[0].value, f[1].value, "Freelancer");
-    renderFreelancers();
-    fpager.refresh(true);
-    signupForm.reset();
-    signupMessage.textContent = "Profile created. You are now listed under Find Freelancers.";
-    signupMessage.style.color = "#15803d";
-    setTimeout(() => document.getElementById("freelancers").scrollIntoView(), 700);
+    try {
+        const result = await apiRequest("/register", {
+            full_name: f[0].value,
+            email: f[1].value,
+            password: f[2].value,
+            role: "freelancer",
+            hourly_rate: f[3].value || null,
+            skills: f[4].value,
+            portfolio_url: f[5].value
+        }, false);
+        saveAuthSession(result);
+        signupForm.reset();
+        await loadDatabaseFreelancers();
+        signupMessage.textContent = "Your profile was saved to the database.";
+        signupMessage.style.color = "#15803d";
+    } catch (error) {
+        signupMessage.textContent = error.message;
+        signupMessage.style.color = "#dc2626";
+    }
 });
 
 
@@ -616,31 +700,53 @@ const paymentMessage =
     document.getElementById("paymentMessage");
 
 
-paymentForm.addEventListener("submit", function (event) {
-
-    event.preventDefault();
-
-    const amount =
-        document.getElementById("paymentAmount").value;
-
-
-    if (!amount || amount <= 0) {
-
-        paymentMessage.textContent =
-            "Please enter a valid payment amount.";
-
-        paymentMessage.style.color = "#dc2626";
-
+async function loadPaymentProjects() {
+    const projectSelect = document.getElementById("paymentProject");
+    const token = sessionStorage.getItem("zonke_token");
+    projectSelect.innerHTML = '<option value="">Select a project</option>';
+    if (!token) return;
+    if (!user || user.type !== "client") {
+        projectSelect.innerHTML = '<option value="">Client account required</option>';
         return;
-
     }
+    try {
+        const response = await fetch("http://localhost:3001/api/projects/mine", {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const projects = await response.json();
+        if (!response.ok) throw new Error(projects.error || "Could not load projects");
+        projects.forEach(project => {
+            const option = document.createElement("option");
+            option.value = project.project_id;
+            option.textContent = `${project.title} (#${project.project_id}) - R${Number(project.agreed_amount).toLocaleString("en-ZA")}`;
+            projectSelect.append(option);
+        });
+    } catch (error) {
+        paymentMessage.textContent = error.message;
+        paymentMessage.style.color = "#dc2626";
+    }
+}
 
+loadPaymentProjects();
 
-    paymentMessage.textContent =
-        "Payment interface completed successfully. No real payment has been processed.";
-
-    paymentMessage.style.color = "#15803d";
-
+paymentForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+    const project_id = Number(document.getElementById("paymentProject").value);
+    const amount = Number(document.getElementById("paymentAmount").value);
+    const method = document.getElementById("paymentMethod").value;
+    if (!project_id || !Number.isFinite(amount) || amount <= 0 || !method) {
+        paymentMessage.textContent = "Select a project, payment method, and valid amount.";
+        paymentMessage.style.color = "#dc2626";
+        return;
+    }
+    try {
+        const result = await apiRequest("/payments", { project_id, amount, method });
+        paymentMessage.textContent = `Payment request #${result.paymentId} is pending. No money has been charged.`;
+        paymentMessage.style.color = "#15803d";
+    } catch (error) {
+        paymentMessage.textContent = error.message;
+        paymentMessage.style.color = "#dc2626";
+    }
 });
 
 
@@ -653,17 +759,23 @@ const contactMessage =
     document.getElementById("contactMessage");
 
 
-contactForm.addEventListener("submit", function (event) {
-
+contactForm.addEventListener("submit", async function (event) {
     event.preventDefault();
-
-    contactMessage.textContent =
-        "Thank you. Your message has been prepared successfully in this frontend demonstration.";
-
-    contactMessage.style.color = "#15803d";
-
-    contactForm.reset();
-
+    const fields = contactForm.elements;
+    try {
+        await apiRequest("/contact", {
+            full_name: fields[0].value,
+            email: fields[1].value,
+            subject: fields[2].value,
+            message: fields[3].value
+        }, false);
+        contactMessage.textContent = "Your message was saved. Thank you for contacting us.";
+        contactMessage.style.color = "#15803d";
+        contactForm.reset();
+    } catch (error) {
+        contactMessage.textContent = error.message;
+        contactMessage.style.color = "#dc2626";
+    }
 });
 
 

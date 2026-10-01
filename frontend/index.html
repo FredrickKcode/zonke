@@ -819,12 +819,24 @@
 
                 <div class="form-group">
 
+                    <label for="paymentProject">Project</label>
+
+                    <select id="paymentProject" required>
+                        <option value="">Log in to load your projects</option>
+                    </select>
+
+                </div>
+
+                <div class="form-group">
+
                     <label>Payment Amount</label>
 
                     <input
                         type="number"
                         id="paymentAmount"
                         value="5000"
+                        min="0.01"
+                        step="0.01"
                         required
                     >
 
@@ -835,15 +847,15 @@
 
                     <label>Payment Method</label>
 
-                    <select required>
+                    <select id="paymentMethod" required>
 
                         <option value="">
                             Select payment method
                         </option>
 
-                        <option>Credit / Debit Card</option>
-                        <option>Bank Transfer</option>
-                        <option>Digital Wallet</option>
+                        <option value="card">Credit / Debit Card</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="wallet">Digital Wallet</option>
 
                     </select>
 
