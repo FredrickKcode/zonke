@@ -502,7 +502,7 @@ function addDatabaseJobCard(job) {
         : "No deadline";
 
     jobGrid.insertAdjacentHTML("beforeend", `
-        <article class="job-card" data-category="${esc(category)}">
+        <article class="job-card database-job-card" data-category="${esc(category)}">
             <div class="job-top"><span class="tag">${esc(categoryLabel)}</span><span class="status">Open</span></div>
             <h3>${esc(job.title)}</h3>
             <p class="company">${esc(job.poster_name || "Zonke Client")}</p>
@@ -518,6 +518,7 @@ async function loadDatabaseJobs() {
         const response = await fetch("http://localhost:3001/api/jobs");
         if (!response.ok) throw new Error("Jobs API request failed");
         const jobs = await response.json();
+        jobGrid.querySelectorAll(".database-job-card").forEach(card => card.remove());
         jobs.forEach(addDatabaseJobCard);
         jobLoadStatus.textContent = jobs.length || savedJobs.length
             ? ""
@@ -533,19 +534,53 @@ loadDatabaseFreelancers();
 loadDatabaseBlogPosts();
 loadDatabaseBounties();
 
-postJobForm.addEventListener("submit", function (event) {
+postJobForm.addEventListener("submit", async function (event) {
     event.preventDefault();
-    const f = postJobForm.elements;
-    const job = { title: f[0].value, category: f[1].value.toLowerCase(), budget: f[2].value,
-                  deadline: f[3].value, desc: f[4].value, company: user ? user.name : "Zonke Client" };
-    addJobCard(job);
-    savedJobs.push(job);
-    store.set("jobs", savedJobs);
-    postJobForm.reset();
-    filterJobs();
-    jobMessage.textContent = "Your job is now live in Find Work.";
-    jobMessage.style.color = "#15803d";
-    setTimeout(() => document.getElementById("jobs").scrollIntoView(), 700);
+    const fields = postJobForm.elements;
+    const token = sessionStorage.getItem("zonke_token");
+
+    if (!token) {
+        jobMessage.textContent = "Please log in before posting a job.";
+        jobMessage.style.color = "#dc2626";
+        return;
+    }
+
+    const amount = Number(fields[2].value);
+    const job = {
+        title: fields[0].value.trim(),
+        category: fields[1].value.trim().toLowerCase(),
+        budget_min: amount,
+        budget_max: amount,
+        deadline: fields[3].value,
+        description: fields[4].value.trim(),
+        location: "Remote"
+    };
+
+    try {
+        const response = await fetch("http://localhost:3001/api/jobs", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify(job)
+        });
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || "Could not post the job.");
+        }
+
+        postJobForm.reset();
+        await loadDatabaseJobs();
+        filterJobs();
+        jobMessage.textContent = "Your job was saved to the database.";
+        jobMessage.style.color = "#15803d";
+        setTimeout(() => document.getElementById("jobs").scrollIntoView(), 700);
+    } catch (error) {
+        jobMessage.textContent = error.message || "Could not connect to the API.";
+        jobMessage.style.color = "#dc2626";
+    }
 });
 
 
