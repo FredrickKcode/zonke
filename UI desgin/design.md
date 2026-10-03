@@ -797,3 +797,593 @@ The emphasis should remain on **clear navigation, trustworthy presentation, easy
 
 This structure can also serve as the foundation for a **Figma design system, UI component library, or frontend development specification**.
 
+# Outline of Improvements
+
+## What the ZONKE REDEVELOPMENT PROJECT Spec Adds That the Zonke.me UI Design Spec Is Missing
+
+Below is a structured outline of every improvement, addition, and clarification that the **ZONKE REDEVELOPMENT PROJECT** specification brings beyond what is covered in the **Zonke.me — UI Design Specification**.
+
+---
+
+## 1. NAVIGATION IMPROVEMENTS
+
+### Missing Navigation Items
+| Item | Status in UI Design Spec | Required by Redevelopment Spec |
+|------|--------------------------|-------------------------------|
+| **Login** | ❌ Not in navigation | ✅ Required in primary nav |
+| **Register** | ❌ Not in navigation | ✅ Required in primary nav |
+| **FAQ** | ❌ Not mentioned | ✅ Required as prototype support page |
+| **Policies** | ❌ Not mentioned | ✅ Required as prototype support page |
+| **Contact** | ❌ Only mentioned in passing | ✅ Required as prototype support page |
+| **Dashboard links** | ❌ Not referenced | ✅ Client & Freelancer dashboards needed |
+| **Profile/Account** | ❌ Not referenced | ✅ Required for authenticated users |
+
+### Navigation Gaps
+- No **Find Work** page in navigation (freelancer-facing job search)
+- No **Payments** section in navigation (pending confirmation)
+- No separation between **public** and **authenticated** navigation states
+- No mobile navigation connecting the main journeys explicitly
+
+---
+
+## 2. REGISTRATION IMPROVEMENTS
+
+### Missing Registration Choice Screen
+The redevelopment spec requires a **two-path registration choice**:
+- "I'M A CLIENT" — Post jobs and hire talent
+- "I'M A FREELANCER" — Find work and offer my skills
+
+**This entire screen is absent from the UI Design Spec.**
+
+### Missing Client Registration Form
+Required fields not covered:
+- Full Name
+- Email
+- Password
+- **Confirm Password**
+- **Terms/Policies agreement checkbox**
+- **Create Client Account** button
+
+### Missing Freelancer Registration Form Fields
+The UI Design Spec only covers a partial freelancer sign-up form. Missing:
+- **Confirm Password**
+- **Experience**
+- **Short Bio**
+- **Terms/Policies agreement checkbox**
+- **Create Freelancer Account** button (vs "Create Profile")
+
+### Missing Login Page
+The redevelopment spec requires a full login page:
+- Email
+- Password
+- **Login** button
+- **Forgot password?** link
+- **Don't have an account? Register** link
+- Role-based redirect after authentication
+- Error handling for invalid credentials
+
+**This entire page is absent from the UI Design Spec.**
+
+---
+
+## 3. DASHBOARD IMPROVEMENTS
+
+### Missing Client/Buyer Dashboard
+The redevelopment spec requires:
+- **Dashboard** overview
+- **My Jobs** section
+- **Proposals** section
+- **Projects** section
+- **Payments** section
+- **Messages** section
+- **Profile/account** section
+- Stat cards: My Jobs count, Proposals count, Projects count
+- **+ Post a New Job** button
+- Job listing cards with: Title, Status, Proposal count, View Job action
+- Client journey: Login → My Jobs → Open Job → View Proposals → View Freelancer → Select Freelancer → Confirm Hire → Project Starts
+
+**This entire dashboard is absent from the UI Design Spec.**
+
+### Missing Freelancer Dashboard
+The redevelopment spec requires:
+- **Dashboard** overview
+- **My Profile** section
+- **Find Work** section
+- **My Proposals** section
+- **Projects** section
+- **Messages** section
+- Stat cards: Available Jobs, Proposals, Projects
+- **Profile Completion** indicator (e.g., "Your profile is 80% complete")
+- **Complete Profile** button
+- **Recommended Jobs** section with job cards
+- Freelancer journey: Home → Register → Freelancer → Create Account → Profile/Skills → Find Jobs → Job Details → Submit Proposal → Await Selection
+
+**This entire dashboard is absent from the UI Design Spec.**
+
+---
+
+## 4. JOB MARKETPLACE IMPROVEMENTS
+
+### Missing Find Work Page
+The redevelopment spec requires a full freelancer-facing job marketplace:
+- **Search** field: "Search jobs, skills or keywords..."
+- **Filters**: Category, Budget (Min-Max), Experience, Location
+- **Available Jobs** listing with cards showing:
+  - Job title
+  - Short description
+  - Budget
+  - **View Details** action
+- **Loading state**: "Loading jobs..."
+- **Empty state**: "No jobs found. Try changing your search or filters."
+- **Error state**: "Something went wrong. Please try again."
+- **Search results** and **filter results** states
+
+**This page is absent from the UI Design Spec.**
+
+### Missing Job Details Page
+The redevelopment spec requires:
+- Job title
+- Posted timestamp (e.g., "Posted 2 hours ago")
+- Project Description
+- **Requirements** section (bullet list)
+- Budget
+- Client information
+- Job status
+- **Submit Proposal** action
+
+**This page is absent from the UI Design Spec.**
+
+### Missing Job Cards
+The redevelopment spec requires job cards with:
+- Job title
+- Short description
+- Budget
+- Relevant category/details
+- **Job status** (Open/Closed)
+- **View Job** action
+
+The UI Design Spec only covers freelancer/profile cards, not job cards.
+
+---
+
+## 5. TALENT DISCOVERY IMPROVEMENTS
+
+### Missing Find Freelancers Page
+The redevelopment spec requires a dedicated talent discovery page:
+- **Search by skill** field
+- **Filters**: Skills, Experience, Availability
+- Profile grid with cards showing:
+  - Profile image
+  - Name
+  - Primary role/skill
+  - Skills list
+  - **View Profile** action
+
+**This page is absent from the UI Design Spec.**
+
+### Missing Freelancer Profile Page
+The redevelopment spec requires a full freelancer profile page:
+- Profile image
+- Name
+- Primary role/skill
+- **Availability** (where approved)
+- **Bio/About** section
+- **Skills** section (tag-style display)
+- **Experience** section (e.g., "3+ Years")
+- **Portfolio** section (project grid)
+- **Contact** action
+
+**This page is absent from the UI Design Spec.**
+
+### Missing Freelancer Card Fields
+The redevelopment spec requires freelancer cards to show:
+- Profile image
+- Name
+- **Primary skill** (distinct field)
+- **Skills** (list)
+- **Experience**
+- View Profile action
+
+The UI Design Spec only mentions: Profile image, Name, Job Title, Rating, Description, Hourly Rate, Card Button.
+
+---
+
+## 6. PROPOSAL & HIRING IMPROVEMENTS
+
+### Missing Submit Proposal Form
+The redevelopment spec requires:
+- Job reference (e.g., "Job: Website Developer")
+- **Proposal Details** textarea
+- **Proposed Amount** field
+- **Estimated Timeline** field
+- **Cancel** button
+- **Submit Proposal** button
+
+**This form is absent from the UI Design Spec.**
+
+### Missing Client Proposal Review Page
+The redevelopment spec requires:
+- Job title header (e.g., "JOB: WEBSITE DEVELOPMENT")
+- Proposal count (e.g., "8 PROPOSALS")
+- Proposal cards showing:
+  - Freelancer name
+  - Job title
+  - Skills list
+  - Proposed amount
+  - **View Profile** action
+  - **View Proposal** action
+  - **Hire** action
+- Authorization: Client must only see proposals for their own jobs
+
+**This page is absent from the UI Design Spec.**
+
+### Missing Hiring Confirmation Modal
+The redevelopment spec requires:
+- Freelancer name
+- Job name
+- Proposal amount
+- Confirmation question: "Are you sure you want to hire this freelancer?"
+- **Cancel** button
+- **Confirm Hire** button
+- Once confirmed, freelancer becomes associated with the job/project
+
+**This flow is absent from the UI Design Spec.**
+
+---
+
+## 7. PROJECT & COMMUNICATION IMPROVEMENTS
+
+### Missing Project/Communication Area
+The redevelopment spec requires a basic project area after hiring:
+- Project title (e.g., "PROJECT: WEBSITE DEVELOPMENT")
+- Client name
+- Freelancer name
+- **Status** (e.g., "In Progress")
+- **Project Details** section
+- **Messages** section with:
+  - Client messages
+  - Freelancer messages
+  - Message input field
+  - **Send** button
+- Note: Real-time chat vs simpler messaging is an **open decision**
+
+**This area is absent from the UI Design Spec.**
+
+---
+
+## 8. PAYMENT IMPROVEMENTS
+
+### Payment Architecture Clarification
+The redevelopment spec explicitly states:
+- Production payment processing is **NOT a confirmed first-prototype requirement**
+- Payment architecture and workflow require **explicit decision**
+- Payments should be treated as **"Pending confirmation / prototype representation only"**
+- **No real payment information should be designed or stored** until an approved payment architecture exists
+- Payment provider, escrow, and complex milestones are **not yet confirmed**
+
+The UI Design Spec describes a payment gateway with payment summaries, transaction status, error handling, and payment history — but does not include these critical caveats.
+
+---
+
+## 9. BOUNTIES IMPROVEMENTS
+
+### Bounties Workflow Clarification
+The redevelopment spec explicitly states:
+- Bounties should appear in navigation **if retained from feedback/reference interface**
+- The Team 1 planning document does **NOT define a detailed Bounties workflow or data model**
+- Bounties should be treated as **"UI/content to be confirmed before being treated as a functional first-prototype requirement"**
+- **Full Bounties functionality is not yet confirmed**
+
+The UI Design Spec describes bounty cards with fields and a Submit Solution button — but does not include these caveats.
+
+---
+
+## 10. FAQ, CONTACT & POLICIES IMPROVEMENTS
+
+### Missing FAQ Page
+The redevelopment spec requires:
+- **FREQUENTLY ASKED QUESTIONS** heading
+- Expandable Q&A items:
+  - "How do I find work?" — Browse available jobs and submit proposals.
+  - "How do I post a job?" — Select Post a Job and provide the project information.
+  - "How do I submit a proposal?" — Open a job and select Submit Proposal.
+  - "How do I hire a freelancer?" — Review proposals and select a freelancer.
+- FAQ access is part of the **confirmed prototype support area**
+
+**This page is absent from the UI Design Spec.**
+
+### Missing Contact Page (Full)
+The redevelopment spec requires:
+- **CONTACT ZONKE** heading
+- **Name** field
+- **Email** field
+- **Subject** field
+- **Message** textarea
+- **Send Message** button
+- Note: Final fields should be checked against approved feedback before implementation
+
+The UI Design Spec covers a contact form in Section 9.1 but does not include it as a distinct page in the final structure.
+
+### Missing Policies Area
+The redevelopment spec requires:
+- **POLICIES** section accessible from footer and registration
+- **Terms and Conditions**
+- **Privacy Policy**
+- **Platform Rules**
+- **User Guidelines**
+- Exact policy content should come from approved project content
+
+**This area is absent from the UI Design Spec.**
+
+---
+
+## 11. FOOTER IMPROVEMENTS
+
+### Missing Footer Specification
+The redevelopment spec requires a consistent footer across all public-facing pages:
+- **ZONKE** branding
+- **Find Work** link
+- **Find Freelancers** link
+- **Post a Job** link
+- **FAQ** link
+- **Contact** link
+- **Policies** link
+- **Privacy** link
+- **Terms** link
+- **© Zonke** copyright
+
+**This footer specification is absent from the UI Design Spec.**
+
+---
+
+## 12. UI COMPONENT IMPROVEMENTS
+
+### Missing Reusable Component List
+The redevelopment spec explicitly requires these reusable components:
+- Navigation
+- Footer
+- Buttons
+- Form fields
+- **Input validation**
+- Job cards
+- Freelancer cards
+- Profile sections
+- **Proposal cards**
+- **Search**
+- **Filters**
+- **Status indicators**
+- **Modals**
+- **Alerts**
+- **Loading states**
+- **Empty states**
+- **Error states**
+
+The UI Design Spec covers colors, typography, buttons, cards, and forms — but does not explicitly define the reusable component library or these specific components.
+
+---
+
+## 13. UI STATE IMPROVEMENTS
+
+### Missing UI States
+The redevelopment spec requires every important interaction to have:
+
+| State | Example | Covered in UI Design Spec? |
+|-------|---------|---------------------------|
+| **Loading** | "Loading jobs..." | ❌ No |
+| **Empty** | "No jobs found. Try changing your search or filters." | ❌ No |
+| **Error** | "Something went wrong. Please try again." | ❌ No |
+| **Success** | "Your job has been posted successfully." | ❌ No |
+| **Form validation** | "Please enter a job title." / "Please enter your budget." / "Please enter a valid email address." | ❌ No |
+
+Client-side validation must be supported, with server-side validation also required by the backend.
+
+---
+
+## 14. RESPONSIVE DESIGN IMPROVEMENTS
+
+### Missing Responsive Requirements
+The redevelopment spec explicitly requires:
+- **Dashboards** should adapt to smaller screens
+- **Search and filters** should remain accessible on mobile
+- **Responsive navigation** connecting main journeys is explicitly part of prototype scope
+- **Cards** should stack vertically on mobile
+- **Forms** should use full available width on mobile
+- **Buttons** should remain easy to tap on mobile
+
+The UI Design Spec covers mobile responsiveness for inputs, buttons, and touch targets — but does not cover dashboards, search/filters, or responsive navigation connecting journeys.
+
+---
+
+## 15. ACCESSIBILITY IMPROVEMENTS
+
+### Missing Accessibility Requirements
+The redevelopment spec explicitly requires:
+- Clear text hierarchy
+- Sufficient contrast
+- **Proper form labels**
+- **Keyboard navigation**
+- **Clearly identifiable interactive controls**
+- **Understandable error messages**
+- **Accessible buttons and links**
+- **Responsive layouts**
+
+These accessibility considerations are explicitly identified in the Team 1 UI/UX requirements but are not detailed in the UI Design Spec.
+
+---
+
+## 16. BRANDING & CONTENT IMPROVEMENTS
+
+### Missing Branding Clarifications
+The redevelopment spec requires:
+- Confirmed **Zonke branding** used consistently
+- **Legacy Olance/OLANCE wording** must be removed or confirmed before final UI approval
+- Project team must confirm which existing:
+  - **Blog content** should be retained
+  - **FAQ content** should be retained
+  - **Marketing statistics** should be retained
+  - **Website content** should be retained
+
+The UI Design Spec mentions removing generic blog content but does not address legacy Olance wording or the confirmation requirements.
+
+---
+
+## 17. USER JOURNEY IMPROVEMENTS
+
+### Missing Complete User Journeys
+
+#### Visitor Journey
+**Home → Find Work / Find Freelancers / FAQ / Contact / Policies → Register or Login**
+
+Not fully covered in the UI Design Spec.
+
+#### Client/Buyer Journey
+**Home → Register → Client/Buyer → Create Account → Login → Post Job → Enter Details → Submit → Job Listed → View Proposals → View Freelancer → Select Freelancer → Confirm Hire → Project → Communication**
+
+Missing from the UI Design Spec:
+- Registration step
+- Login step
+- Dashboard step
+- View Proposals step
+- Confirm Hire step
+- Communication step
+
+#### Freelancer Journey
+**Home → Register → Freelancer → Create Account → Profile/Skills → Find Work → Job Details → Submit Proposal → Await Selection → Project → Communication**
+
+Missing from the UI Design Spec:
+- Registration step
+- Login step
+- Dashboard step
+- Find Work page
+- Job Details page
+- Submit Proposal step
+- Await Selection step
+- Communication step
+
+---
+
+## 18. FIRST PROTOTYPE PAGES IMPROVEMENTS
+
+### Missing Prototype Pages
+The redevelopment spec requires these 16 main pages:
+
+| # | Page | Covered in UI Design Spec? |
+|---|------|---------------------------|
+| 1 | Home | ✅ Partially |
+| 2 | Register | ❌ No |
+| 3 | Login | ❌ No |
+| 4 | Client/Buyer Dashboard | ❌ No |
+| 5 | Freelancer Dashboard | ❌ No |
+| 6 | Post a Job | ✅ Partially |
+| 7 | Find Work | ❌ No |
+| 8 | Job Details | ❌ No |
+| 9 | Find Freelancers | ❌ No |
+| 10 | Freelancer Profile | ❌ No |
+| 11 | Proposals | ❌ No |
+| 12 | Hiring/Selection | ❌ No |
+| 13 | Project/Communication | ❌ No |
+| 14 | FAQ | ❌ No |
+| 15 | Contact | ✅ Partially |
+| 16 | Policies | ❌ No |
+
+---
+
+## 19. FEATURES NOT YET CONFIRMED IMPROVEMENTS
+
+### Missing "Not Yet Confirmed" List
+The redevelopment spec explicitly identifies these features as **not yet confirmed** and not to be treated as fully functional requirements:
+
+- Production payment processing
+- Payment provider
+- Escrow
+- Complex milestones
+- Ratings/reviews
+- Advanced recommendation engine
+- Advanced analytics
+- Full support ticketing
+- Advanced anti-fraud functionality
+- Final role terminology
+- Real-time chat versus simpler messaging
+- Full Bounties functionality
+- Exact blog/marketing content
+
+The UI Design Spec does not include these caveats and presents several of these as confirmed features.
+
+---
+
+## 20. UI/UX HANDOVER IMPROVEMENTS
+
+### Missing Handover Deliverables
+The redevelopment spec requires the UI/UX team to deliver:
+
+- Complete desktop UI
+- Tablet layouts
+- Mobile layouts
+- Registration flows
+- Login
+- Client dashboard
+- Freelancer dashboard
+- Job posting
+- Job discovery
+- Job details
+- Freelancer discovery
+- Freelancer profiles
+- Proposal submission
+- Proposal review
+- Hiring flow
+- Project/communication interface
+- FAQ
+- Contact
+- Policies
+- Navigation
+- Footer
+- Form validation states
+- Loading states
+- Empty states
+- Error states
+- Success states
+- **User-flow diagrams**
+
+The UI Design Spec does not include user-flow diagrams or many of these specific deliverables.
+
+---
+
+## SUMMARY OF KEY IMPROVEMENTS
+
+| Category | Key Additions in Redevelopment Spec |
+|----------|-------------------------------------|
+| **Navigation** | Login, Register, FAQ, Policies, Dashboards |
+| **Registration** | Client vs Freelancer choice, Client form, Full Freelancer form, Login page |
+| **Dashboards** | Client Dashboard, Freelancer Dashboard with stats and sections |
+| **Job Marketplace** | Find Work page, Job Details page, Job Cards with status |
+| **Talent Discovery** | Find Freelancers page, Freelancer Profile page, Skills/Experience on cards |
+| **Proposals** | Submit Proposal form, Client Proposal Review, Hiring confirmation |
+| **Project** | Project/Communication area with messaging |
+| **Payments** | Critical caveats: not confirmed, no real data, pending architecture |
+| **Bounties** | Critical caveats: workflow not defined, pending confirmation |
+| **FAQ/Contact/Policies** | Full pages required as prototype support areas |
+| **Footer** | Consistent footer with specific links |
+| **Components** | Reusable component library, proposal cards, status indicators, modals, alerts |
+| **UI States** | Loading, Empty, Error, Success, Form validation |
+| **Responsive** | Dashboards, search/filters, navigation on mobile |
+| **Accessibility** | Keyboard nav, proper labels, contrast, error messages |
+| **Branding** | Legacy Olance wording removal, content confirmation |
+| **User Journeys** | Complete Visitor, Client, Freelancer journeys |
+| **Prototype Pages** | 16 specific pages required |
+| **Not Yet Confirmed** | Explicit list of features pending confirmation |
+| **Handover** | User-flow diagrams and complete deliverable list |
+
+---
+
+## FINAL UI DIRECTION
+
+The overall Zonke interface should be a **clean, responsive marketplace experience** centred around two actions:
+
+**Clients/Buyers:**
+**Post a Job → Review Proposals → Hire → Manage Project**
+
+**Freelancers:**
+**Create Profile → Find Work → Submit Proposal → Get Hired → Manage Project**
+
+The feedback-derived navigation such as **Find Work, Find Freelancers, Post a Job, Bounties, Jobs and Payments** can be incorporated into the interface, while the planning document remains the authority for the confirmed first-prototype functionality. Features that the planning document identifies as requiring confirmation should remain clearly marked as such rather than being presented as completed requirements.
+
